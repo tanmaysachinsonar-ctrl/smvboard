@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                 String        @id @default(cuid())
+  name               String
+  createdAt          DateTime      @default(now())
+  stripeCustomerId   String?
+  subscription       Subscription?
+  users              User[]
+  accounts           Account[]
+  transactions       Transaction[]
+  invoices           Invoice[]
+  events             Event[]
+  members            Member[]
+  auditLogs          AuditLog[]
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String?
+  avatarUrl     String?
+  role          Role        @default(MEMBER)
+  passwordHash  String?
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id])
+  createdAt     DateTime    @default(now())
+  provider      String?
+  providerId    String?
+}
+
+enum Role {
+  OWNER
+  MEMBER
+  VIEWER
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  name      String
+  position  String?
+  email     String?
+  phone     String?
+  photoUrl  String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  name      String
+  type      AccountType
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  transactions Transaction[]
+}
+
+enum AccountType {
+  CASH
+  BANK
+  GRANT
+  OTHER
+}
+
+model Transaction {
+  id           String   @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id])
+  accountId    String
+  account      Account   @relation(fields: [accountId], references: [id])
+  amount       Float
+  currency     String   @default("EUR")
+  date         DateTime
+  type         TxType
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  description  String?
+  receiptUrl   String?
+  createdById  String
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  reconciled   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}
+
+enum TxType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model Category {
+  id      String @id @default(cuid())
+  orgId   String
+  org     Organization @relation(fields: [orgId], references: [id])
+  name    String
+  kind    CategoryKind
+  createdAt DateTime @default(now())
+  transactions Transaction[]
+}
+
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id])
+  number      String   @unique
+  issuedTo    String
+  amount      Float
+  currency    String @default("EUR")
+  status      InvoiceStatus @default(DRAFT)
+  dueDate     DateTime?
+  pdfUrl      String?
+  createdById String
+  createdBy   User @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+model Event {
+  id         String @id @default(cuid())
+  orgId      String
+  org        Organization @relation(fields: [orgId], references: [id])
+  title      String
+  description String?
+  start      DateTime
+  end        DateTime?
+  allDay     Boolean @default(false)
+  location   String?
+  recurrence String?
+  createdById String
+  createdBy  User @relation(fields: [createdById], references: [id])
+  participants EventParticipant[]
+  createdAt  DateTime @default(now())
+}
+
+model EventParticipant {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event @relation(fields: [eventId], references: [id])
+  userId  String?
+  name    String?
+  status  ParticipantStatus @default(MAYBE)
+}
+
+enum ParticipantStatus {
+  YES
+  NO
+  MAYBE
+}
+
+model Subscription {
+  id                String @id @default(cuid())
+  orgId             String @unique
+  org               Organization @relation(fields: [orgId], references: [id])
+  stripeSubscriptionId String
+  planId            String
+  status            String
+  currentPeriodEnd  DateTime?
+  createdAt         DateTime @default(now())
+}
+
+model AuditLog {
+  id        String @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  userId    String?
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
