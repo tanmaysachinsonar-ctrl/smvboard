@@ -61,18 +61,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log('Fetching user with email:', email);
       const response = await fetch('/api/v1/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log('API Response status:', response.status);
+
       if (response.ok) {
         const userData = await response.json();
+        console.log('User data received:', userData);
         setUser(userData);
       } else {
-        // User might not exist in DB yet - log for debugging
-        console.error('Failed to fetch user from API:', response.status, await response.text());
+        const errorText = await response.text();
+        console.error('Failed to fetch user from API:', response.status, errorText);
+        
+        // If 404, user might not exist in DB - try again after onAuthStateChange creates it
+        if (response.status === 404) {
+          console.log('User not found in DB, will retry via onAuthStateChange');
+        }
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
@@ -82,10 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    // Wait for user to be fetched before redirecting
-    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Immediately fetch user from database
+    if (data.user?.email) {
+      await fetchUser(data.user.email);
+    }
   }
 
   async function signUp(email: string, password: string, name: string, orgName: string) {
