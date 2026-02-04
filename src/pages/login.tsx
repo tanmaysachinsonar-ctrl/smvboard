@@ -23,6 +23,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
+      // Redirect after successful login
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login fehlgeschlagen');

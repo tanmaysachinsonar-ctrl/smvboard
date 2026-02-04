@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 
@@ -15,15 +16,30 @@ interface Member {
 }
 
 export default function MembersPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (user) {
       fetchMembers();
     }
   }, [user]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-smvbg flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
   async function fetchMembers() {
     try {

@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    router.push('/dashboard');
+    // Wait for user to be fetched before redirecting
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   async function signUp(email: string, password: string, name: string, orgName: string) {

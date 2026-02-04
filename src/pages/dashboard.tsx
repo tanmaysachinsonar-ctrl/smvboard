@@ -2,27 +2,35 @@ import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  if (!user) {
+  useEffect(() => {
+    // Redirect to login if not authenticated (after loading)
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  // Show loading state
+  if (loading) {
     return (
       <div className="min-h-screen bg-smvbg flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Willkommen bei SMVBoard</h1>
-          <div className="space-x-4">
-            <Link href="/login" className="px-6 py-3 bg-accent hover:bg-accentHover rounded-md transition inline-block">
-              Anmelden
-            </Link>
-            <Link href="/signup" className="px-6 py-3 bg-card hover:bg-gray-800 rounded-md transition inline-block">
-              Registrieren
-            </Link>
-          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-gray-400">Lädt...</p>
         </div>
       </div>
     );
+  }
+
+  // Show nothing while redirecting
+  if (!user) {
+    return null;
   }
 
   return (

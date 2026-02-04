@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 
@@ -15,17 +16,32 @@ interface Account {
 }
 
 export default function FinancesPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccount, setNewAccount] = useState({ name: '', type: 'CASH', balance: 0 });
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
     if (user) {
       fetchAccounts();
     }
   }, [user]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-smvbg flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
   async function fetchAccounts() {
     try {
