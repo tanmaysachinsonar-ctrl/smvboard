@@ -19,6 +19,7 @@ model Organization {
   invoices           Invoice[]
   events             Event[]
   members            Member[]
+  categories         Category[]
   auditLogs          AuditLog[]
 }
 
@@ -34,6 +35,9 @@ model User {
   createdAt     DateTime    @default(now())
   provider      String?
   providerId    String?
+  transactions  Transaction[]
+  invoices      Invoice[]
+  events        Event[]
 }
 
 enum Role {
