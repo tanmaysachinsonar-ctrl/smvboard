@@ -11,6 +11,7 @@ const customJestConfig = {
   },
   testEnvironment: 'jest-environment-jsdom',
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
+  testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
 };
 
 module.exports = createJestConfig(customJestConfig);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Head from 'next/head';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,25 +46,37 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link href="/finances" className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition">
+          <Link
+            href="/finances"
+            className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition"
+          >
             <div className="text-4xl mb-2">💰</div>
             <h2 className="text-xl font-semibold">Finanzen</h2>
             <p className="text-gray-400 text-sm mt-1">Konten & Transaktionen verwalten</p>
           </Link>
 
-          <Link href="/members" className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition">
+          <Link
+            href="/members"
+            className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition"
+          >
             <div className="text-4xl mb-2">👥</div>
             <h2 className="text-xl font-semibold">Mitglieder</h2>
             <p className="text-gray-400 text-sm mt-1">SMV-Team organisieren</p>
           </Link>
 
-          <Link href="/events" className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition">
+          <Link
+            href="/events"
+            className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition"
+          >
             <div className="text-4xl mb-2">📅</div>
             <h2 className="text-xl font-semibold">Kalender</h2>
             <p className="text-gray-400 text-sm mt-1">Events planen & verwalten</p>
           </Link>
 
-          <Link href="/subscription" className="bg-gradient-to-br from-accent to-purple-600 rounded-lg p-6 hover:ring-2 hover:ring-white transition">
+          <Link
+            href="/subscription"
+            className="bg-gradient-to-br from-accent to-purple-600 rounded-lg p-6 hover:ring-2 hover:ring-white transition"
+          >
             <div className="text-4xl mb-2">⭐</div>
             <h2 className="text-xl font-semibold">Premium</h2>
             <p className="text-white/80 text-sm mt-1">Erweiterte Features freischalten</p>

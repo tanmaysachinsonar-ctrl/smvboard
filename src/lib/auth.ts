@@ -1,15 +1,6 @@
 import { supabase } from './supabaseClient';
 import { prisma } from './prisma';
 
-interface User {
-  id: string;
-  email: string;
-  name: string | null;
-  role: 'OWNER' | 'MEMBER' | 'VIEWER';
-  orgId: string;
-  createdAt: Date;
-}
-
 export interface AuthSession {
   user: {
     id: string;
@@ -25,8 +16,11 @@ export interface AuthSession {
  * Get current session from Supabase
  */
 export async function getSession(): Promise<AuthSession | null> {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
   if (error || !session) {
     return null;
   }

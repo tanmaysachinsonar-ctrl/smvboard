@@ -25,22 +25,28 @@ export interface AuthenticatedRequest extends NextApiRequest {
 /**
  * Middleware to verify authentication and attach user/org context
  */
-export async function withAuth(
-  handler: (req: AuthenticatedRequest, res: NextApiResponse) => Promise<void | NextApiResponse<any>>,
+export function withAuth(
+  handler: (
+    req: AuthenticatedRequest,
+    res: NextApiResponse
+  ) => Promise<void | NextApiResponse<any>>,
   options: { requiredRole?: Role } = {}
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       // Get token from Authorization header
       const token = req.headers.authorization?.replace('Bearer ', '');
-      
+
       if (!token) {
         return res.status(401).json({ error: 'Unauthorized - No token provided' });
       }
 
       // Verify token with Supabase
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
+      const {
+        data: { user: authUser },
+        error,
+      } = await supabase.auth.getUser(token);
 
       if (error || !authUser) {
         return res.status(401).json({ error: 'Unauthorized - Invalid token' });
@@ -55,7 +61,7 @@ export async function withAuth(
       // Auto-create user if doesn't exist in DB (Supabase-only user)
       if (!user) {
         console.log(`User ${authUser.email} exists in Supabase but not in DB - creating...`);
-        
+
         // Create default organization for this user
         const org = await prisma.organization.create({
           data: {
@@ -126,9 +132,9 @@ export function withValidation<T>(
       extendedReq.validatedBody = validatedBody;
       return await handler(extendedReq, res);
     } catch (error: any) {
-      return res.status(400).json({ 
-        error: 'Validation failed', 
-        details: error.errors || error.message 
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors || error.message,
       });
     }
   };

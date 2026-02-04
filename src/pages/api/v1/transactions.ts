@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
 import { withAuth, AuthenticatedRequest, logAudit } from '../../../lib/apiMiddleware';
-import { createTransactionSchema, updateTransactionSchema } from '../../../lib/validationSchemas';
+import { createTransactionSchema } from '../../../lib/validationSchemas';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   const { orgId, user } = req;
@@ -11,19 +11,19 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       const { accountId, type, startDate, endDate, limit = '50' } = req.query;
 
       const where: any = { orgId };
-      
+
       if (accountId && typeof accountId === 'string') {
         where.accountId = accountId;
       }
-      
+
       if (type && typeof type === 'string') {
         where.type = type;
       }
-      
+
       if (startDate && typeof startDate === 'string') {
         where.date = { ...where.date, gte: new Date(startDate) };
       }
-      
+
       if (endDate && typeof endDate === 'string') {
         where.date = { ...where.date, lte: new Date(endDate) };
       }
@@ -76,7 +76,8 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       });
 
       // Update account balance
-      const amountChange = validatedData.type === 'INCOME' ? validatedData.amount : -validatedData.amount;
+      const amountChange =
+        validatedData.type === 'INCOME' ? validatedData.amount : -validatedData.amount;
       await prisma.account.update({
         where: { id: validatedData.accountId },
         data: { balance: { increment: amountChange } },

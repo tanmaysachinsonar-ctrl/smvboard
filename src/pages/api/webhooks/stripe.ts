@@ -1,9 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import Stripe from "stripe";
-import { prisma } from "../../../lib/prisma";
-import { buffer } from "micro";
+import type { NextApiRequest, NextApiResponse } from 'next';
+import Stripe from 'stripe';
+import { prisma } from '../../../lib/prisma';
+import { buffer } from 'micro';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2024-11-20" as any });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2024-11-20' as any });
 
 // Disable body parsing for raw body
 export const config = {
@@ -19,15 +19,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const sig = req.headers['stripe-signature'] as string | undefined;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
   let event: Stripe.Event;
 
   try {
-    if (!sig) throw new Error("No signature");
+    if (!sig) throw new Error('No signature');
     const rawBody = await buffer(req);
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
-    console.error("Webhook signature verification failed.", err?.message);
+    console.error('Webhook signature verification failed.', err?.message);
     return res.status(400).send(`Webhook Error: ${err?.message}`);
   }
 
@@ -51,13 +51,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             create: {
               orgId,
               stripeSubscriptionId: subscriptionId,
-              planId: subscription.items.data[0].price.id,
+              planId: subscription.items.data[0]?.price.id || 'unknown',
               status: subscription.status,
               currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             },
             update: {
               stripeSubscriptionId: subscriptionId,
-              planId: subscription.items.data[0].price.id,
+              planId: subscription.items.data[0]?.price.id || 'unknown',
               status: subscription.status,
               currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             },
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               action: 'SUBSCRIPTION_ACTIVATED',
               meta: {
                 subscriptionId,
-                planId: subscription.items.data[0].price.id,
+                planId: subscription.items.data[0]?.price.id || 'unknown',
               },
             },
           });
@@ -89,27 +89,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             where: { stripeSubscriptionId: subscription.id },
           });
 
-          if (orgSubscription) {
-            await prisma.subscription.update({
-              where: { id: orgSubscription.id },
-              data: {
-                status: subscription.status,
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-              },
-            });
-
-            await prisma.auditLog.create({
-              data: {
-                orgId: orgSubscription.orgId,
-                userId: null,
-                action: 'INVOICE_PAID',
-                meta: {
-                  invoiceId: invoice.id,
-                  amount: invoice.amount_paid / 100,
-                },
-              },
-            });
+          if (!orgSubscription) {
+            console.error('Subscription not found for stripe subscription:', subscription.id);
+            break;
           }
+
+          await prisma.subscription.update({
+            where: { id: orgSubscription.id },
+            data: {
+              status: subscription.status,
+              currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            },
+          });
+
+          await prisma.auditLog.create({
+            data: {
+              orgId: orgSubscription.orgId,
+              userId: null,
+              action: 'INVOICE_PAID',
+              meta: {
+                invoiceId: invoice.id,
+                amount: invoice.amount_paid / 100,
+              },
+            },
+          });
         }
         break;
       }
@@ -148,28 +151,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           where: { stripeSubscriptionId: subscription.id },
         });
 
-        if (orgSubscription) {
-          await prisma.subscription.update({
-            where: { id: orgSubscription.id },
-            data: {
-              status: subscription.status,
-              currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-              planId: subscription.items.data[0].price.id,
-            },
-          });
-
-          await prisma.auditLog.create({
-            data: {
-              orgId: orgSubscription.orgId,
-              userId: null,
-              action: 'SUBSCRIPTION_UPDATED',
-              meta: {
-                subscriptionId: subscription.id,
-                status: subscription.status,
-              },
-            },
-          });
+        if (!orgSubscription) {
+          console.error('Subscription not found for stripe subscription:', subscription.id);
+          break;
         }
+
+        await prisma.subscription.update({
+          where: { id: orgSubscription.id },
+          data: {
+            status: subscription.status,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            planId: subscription.items.data[0]?.price.id || orgSubscription.planId,
+          },
+        });
+
+        await prisma.auditLog.create({
+          data: {
+            orgId: orgSubscription.orgId,
+            userId: null,
+            action: 'SUBSCRIPTION_UPDATED',
+            meta: {
+              subscriptionId: subscription.id,
+              status: subscription.status,
+            },
+          },
+        });
         break;
       }
 
@@ -181,25 +187,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           where: { stripeSubscriptionId: subscription.id },
         });
 
-        if (orgSubscription) {
-          await prisma.subscription.update({
-            where: { id: orgSubscription.id },
-            data: {
-              status: 'canceled',
-            },
-          });
-
-          await prisma.auditLog.create({
-            data: {
-              orgId: orgSubscription.orgId,
-              userId: null,
-              action: 'SUBSCRIPTION_CANCELED',
-              meta: {
-                subscriptionId: subscription.id,
-              },
-            },
-          });
+        if (!orgSubscription) {
+          console.error('Subscription not found for stripe subscription:', subscription.id);
+          break;
         }
+
+        await prisma.subscription.update({
+          where: { id: orgSubscription.id },
+          data: {
+            status: 'canceled',
+          },
+        });
+
+        await prisma.auditLog.create({
+          data: {
+            orgId: orgSubscription.orgId,
+            userId: null,
+            action: 'SUBSCRIPTION_CANCELED',
+            meta: {
+              subscriptionId: subscription.id,
+            },
+          },
+        });
         break;
       }
 
