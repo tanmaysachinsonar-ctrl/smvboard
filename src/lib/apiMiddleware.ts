@@ -47,13 +47,36 @@ export async function withAuth(
       }
 
       // Fetch user from database
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { email: authUser.email! },
         include: { org: true },
       });
 
+      // Auto-create user if doesn't exist in DB (Supabase-only user)
       if (!user) {
-        return res.status(404).json({ error: 'User not found in database' });
+        console.log(`User ${authUser.email} exists in Supabase but not in DB - creating...`);
+        
+        // Create default organization for this user
+        const org = await prisma.organization.create({
+          data: {
+            name: authUser.user_metadata?.orgName || `${authUser.email}'s Organization`,
+          },
+        });
+
+        // Create user in database
+        user = await prisma.user.create({
+          data: {
+            id: authUser.id,
+            email: authUser.email!,
+            name: authUser.user_metadata?.name || authUser.email?.split('@')[0],
+            role: 'OWNER',
+            orgId: org.id,
+            provider: 'email',
+          },
+          include: { org: true },
+        });
+
+        console.log(`Auto-created user ${user.email} with org ${org.name}`);
       }
 
       // Check role if required

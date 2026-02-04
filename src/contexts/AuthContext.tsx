@@ -52,15 +52,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUser(email: string) {
     try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      
+      if (!token) {
+        console.error('No auth token available');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/v1/me', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+      } else {
+        // User might not exist in DB yet - log for debugging
+        console.error('Failed to fetch user from API:', response.status, await response.text());
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
