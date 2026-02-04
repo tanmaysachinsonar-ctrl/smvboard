@@ -8,7 +8,6 @@ interface User {
   role: 'OWNER' | 'MEMBER' | 'VIEWER';
   orgId: string;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface AuthSession {

@@ -12,7 +12,6 @@ interface User {
   role: Role;
   orgId: string;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -72,7 +71,14 @@ export async function withAuth(
 
       // Attach user and orgId to request
       const authenticatedReq = req as AuthenticatedRequest;
-      authenticatedReq.user = user;
+      authenticatedReq.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role as Role,
+        orgId: user.orgId,
+        createdAt: user.createdAt,
+      };
       authenticatedReq.orgId = user.orgId;
 
       return await handler(authenticatedReq, res);
