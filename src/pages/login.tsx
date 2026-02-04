@@ -11,6 +11,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const router = useRouter();
+  
+  // Check if user is coming from email confirmation
+  const { query } = router;
+  const fromConfirmation = query.confirmed === 'true';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +46,17 @@ export default function LoginPage() {
           </div>
 
           <div className="bg-card rounded-lg p-8">
+            {fromConfirmation && (
+              <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded mb-6">
+                <div className="flex items-center">
+                  <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="font-medium">Email erfolgreich bestätigt! Du kannst dich jetzt anmelden.</span>
+                </div>
+              </div>
+            )}
+            
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded">

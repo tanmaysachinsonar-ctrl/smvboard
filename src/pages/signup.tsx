@@ -11,6 +11,7 @@ export default function SignUpPage() {
   const [orgName, setOrgName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -21,9 +22,15 @@ export default function SignUpPage() {
 
     try {
       await signUp(email, password, name, orgName);
-      router.push('/dashboard');
+      // Show email confirmation message instead of redirecting
+      setShowEmailConfirmation(true);
     } catch (err: any) {
-      setError(err.message || 'Registrierung fehlgeschlagen');
+      // Check if it's an email confirmation required error
+      if (err.message?.includes('Email not confirmed')) {
+        setShowEmailConfirmation(true);
+      } else {
+        setError(err.message || 'Registrierung fehlgeschlagen');
+      }
     } finally {
       setLoading(false);
     }
@@ -43,6 +50,63 @@ export default function SignUpPage() {
             </p>
           </div>
 
+          {showEmailConfirmation ? (
+            // Email confirmation success message
+            <div className="bg-card rounded-lg p-8">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-500/10 mb-4">
+                  <svg className="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-4">
+                  Fast geschafft! 🎉
+                </h3>
+                <p className="text-gray-300 mb-4">
+                  Wir haben dir eine <span className="font-semibold text-accent">Bestätigungs-Email</span> an
+                </p>
+                <p className="text-white font-medium bg-smvbg px-4 py-2 rounded mb-6">
+                  {email}
+                </p>
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-4 mb-6 text-left">
+                  <h4 className="font-semibold text-accent mb-2 flex items-center">
+                    <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Nächste Schritte:
+                  </h4>
+                  <ol className="text-sm text-gray-300 space-y-2 ml-7">
+                    <li className="flex items-start">
+                      <span className="font-bold mr-2">1.</span>
+                      Öffne dein Email-Postfach
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-bold mr-2">2.</span>
+                      Suche nach der Email von SMVBoard/Supabase
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-bold mr-2">3.</span>
+                      Klicke auf den Bestätigungs-Link
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-bold mr-2">4.</span>
+                      Danach kannst du dich sofort anmelden!
+                    </li>
+                  </ol>
+                </div>
+                <p className="text-xs text-gray-400 mb-4">
+                  💡 Tipp: Schau auch im Spam-Ordner nach
+                </p>
+                <Link 
+                  href="/login"
+                  className="inline-block w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent hover:bg-accentHover transition"
+                >
+                  Weiter zum Login
+                </Link>
+              </div>
+            </div>
+          ) : (
+            // Original signup form
           <div className="bg-card rounded-lg p-8">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
@@ -136,6 +200,7 @@ export default function SignUpPage() {
               </p>
             </div>
           </div>
+          )}
         </div>
       </div>
     </>
