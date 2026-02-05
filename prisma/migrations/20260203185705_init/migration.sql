@@ -26,6 +26,7 @@ CREATE TABLE "Organization" (
     CONSTRAINT "Organization_pkey" PRIMARY KEY ("id")
 );
 
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,

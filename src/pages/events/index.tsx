@@ -4,16 +4,13 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
+import MonthView from '../../components/calendar/MonthView';
+import CalendarToolbar from '../../components/calendar/CalendarToolbar';
+import EventModal from '../../components/calendar/EventModal';
+import EventCard from '../../components/calendar/EventCard';
+import { Event, CreateEventRequest, UpdateEventRequest } from '../../types/models';
 
-interface Event {
-  id: string;
-  title: string;
-  description?: string;
-  start: string;
-  end?: string;
-  location?: string;
-  createdBy: { name: string; email: string };
-}
+type ViewMode = 'list' | 'month';
 
 export default function EventsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -21,15 +18,24 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    start: '',
-    end: '',
-    location: '',
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showModal, setShowModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => {
+      if (window.innerWidth < 768 && viewMode === 'month') {
+        setViewMode('list');
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [viewMode]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -52,7 +58,13 @@ export default function EventsPage() {
       }
 
       const data = await response.json();
-      setEvents(data);
+      // Map API response to Event type
+      const mappedEvents: Event[] = data.map((e: any) => ({
+        ...e,
+        startAt: e.start,
+        endAt: e.end,
+      }));
+      setEvents(mappedEvents);
     } catch (error) {
       console.error('Failed to fetch events:', error);
       setError('Events konnten nicht geladen werden. Bitte versuchen Sie es erneut.');
@@ -73,56 +85,119 @@ export default function EventsPage() {
     }
   }, [user, fetchEvents]);
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-smvbg flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-      </div>
-    );
-  }
+  const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'today') {
+      setCurrentDate(new Date());
+    } else if (direction === 'prev') {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    }
+  };
 
-  async function handleCreateEvent(e: React.FormEvent) {
-    e.preventDefault();
-    setCreateLoading(true);
-    setError(null);
+  const handleCreateEvent = () => {
+    setSelectedEvent(null);
+    setSelectedDate(undefined);
+    setShowModal(true);
+  };
 
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setSelectedEvent(null);
+    setShowModal(true);
+  };
 
-      if (!token) {
-        setError('Nicht authentifiziert. Bitte melden Sie sich erneut an.');
-        router.push('/login');
-        return;
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event);
+    setSelectedDate(undefined);
+    setShowModal(true);
+  };
+
+  const handleSubmitEvent = async (data: CreateEventRequest | UpdateEventRequest) => {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      throw new Error('Nicht authentifiziert');
+    }
+
+    if (selectedEvent) {
+      // Update
+      const response = await fetch(`/api/v1/events/${selectedEvent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(errorData.error || 'Event konnte nicht aktualisiert werden');
       }
-
+    } else {
+      // Create
       const response = await fetch('/api/v1/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...newEvent,
-          start: new Date(newEvent.start).toISOString(),
-          end: newEvent.end ? new Date(newEvent.end).toISOString() : undefined,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        throw new Error(errorData.error || 'Event konnte nicht erstellt werden');
+      }
+    }
+
+    await fetchEvents();
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Möchten Sie dieses Event wirklich löschen?')) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
       }
 
-      setShowAddModal(false);
-      setNewEvent({ title: '', description: '', start: '', end: '', location: '' });
+      const response = await fetch(`/api/v1/events/${eventId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Event konnte nicht gelöscht werden');
+      }
+
+      setShowModal(false);
+      setSelectedEvent(null);
       await fetchEvents();
     } catch (error) {
-      console.error('Failed to create event:', error);
-      setError(error instanceof Error ? error.message : 'Event konnte nicht erstellt werden.');
+      console.error('Failed to delete event:', error);
+      setError(error instanceof Error ? error.message : 'Event konnte nicht gelöscht werden');
     } finally {
-      setCreateLoading(false);
+      setDeleteLoading(false);
     }
+  };
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-smvbg flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
   }
 
   if (!user) return null;
@@ -134,15 +209,6 @@ export default function EventsPage() {
       </Head>
 
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Kalender & Events</h1>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition"
-          >
-            + Neues Event
-          </button>
-        </div>
         {/* Error Alert */}
         {error && (
           <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
@@ -155,193 +221,83 @@ export default function EventsPage() {
             </button>
           </div>
         )}
+
+        {/* Calendar Toolbar */}
+        <CalendarToolbar
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          currentDate={currentDate}
+          onNavigate={handleNavigate}
+          onCreateEvent={handleCreateEvent}
+          showToggle={true}
+        />
+
+        {/* Loading State */}
         {loading ? (
-          <div className="text-center py-12">Lädt...</div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto"></div>
+            <p className="mt-4 text-gray-400">Lädt Events...</p>
+          </div>
         ) : events.length === 0 ? (
+          /* Empty State */
           <div className="bg-card rounded-lg p-12 text-center">
             <div className="text-6xl mb-4">📅</div>
             <h3 className="text-xl font-semibold mb-2">Keine Events vorhanden</h3>
             <p className="text-gray-400 mb-4">Erstellen Sie Ihr erstes Event.</p>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={handleCreateEvent}
               className="px-6 py-3 bg-accent hover:bg-accentHover rounded-md transition"
             >
               Erstes Event erstellen
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {events.map((event) => (
-              <div key={event.id} className="bg-card rounded-lg p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-semibold">{event.title}</h3>
-                    {event.description && <p className="text-gray-400 mt-1">{event.description}</p>}
-                    <div className="mt-3 flex items-center space-x-4 text-sm text-gray-400">
-                      <span>📅 {new Date(event.start).toLocaleDateString('de-DE')}</span>
-                      {event.location && <span>📍 {event.location}</span>}
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">von {event.createdBy.name}</span>
-                </div>
+          /* Calendar Views */
+          <>
+            {viewMode === 'month' ? (
+              <MonthView
+                events={events}
+                currentDate={currentDate}
+                onEventClick={handleEventClick}
+                onDateClick={handleDateClick}
+              />
+            ) : (
+              <div className="space-y-4">
+                {events.map((event) => (
+                  <EventCard key={event.id} event={event} onClick={() => handleEventClick(event)} />
+                ))}
               </div>
-            ))}
+            )}
+          </>
+        )}
+
+        {/* Event Modal */}
+        <EventModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedEvent(null);
+            setSelectedDate(undefined);
+            setError(null);
+          }}
+          onSubmit={handleSubmitEvent}
+          event={selectedEvent}
+          initialDate={selectedDate}
+        />
+
+        {/* Delete Button in Modal */}
+        {showModal && selectedEvent && (
+          <div className="fixed bottom-24 right-4 md:right-8 z-[60]">
+            <button
+              onClick={() => handleDeleteEvent(selectedEvent.id)}
+              disabled={deleteLoading}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              aria-label="Event löschen"
+            >
+              {deleteLoading ? 'Löschen...' : '🗑️ Löschen'}
+            </button>
           </div>
         )}
-        {/* Add Event Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4">Neues Event erstellen</h2>
-              <form onSubmit={handleCreateEvent} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Titel *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Beschreibung</label>
-                  <textarea
-                    rows={3}
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Startdatum *</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={newEvent.start}
-                    onChange={(e) => setNewEvent({ ...newEvent, start: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Enddatum</label>
-                  <input
-                    type="datetime-local"
-                    value={newEvent.end}
-                    onChange={(e) => setNewEvent({ ...newEvent, end: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Ort</label>
-                  <input
-                    type="text"
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={createLoading}
-                    className="flex-1 px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {createLoading ? 'Erstelle...' : 'Erstellen'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setError(null);
-                    }}
-                    disabled={createLoading}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition disabled:opacity-50"
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-        {/* Add Event Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4">Neues Event erstellen</h2>
-              <form onSubmit={handleCreateEvent} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Titel *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Beschreibung</label>
-                  <textarea
-                    rows={3}
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Startdatum *</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={newEvent.start}
-                    onChange={(e) => setNewEvent({ ...newEvent, start: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Enddatum</label>
-                  <input
-                    type="datetime-local"
-                    value={newEvent.end}
-                    onChange={(e) => setNewEvent({ ...newEvent, end: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Ort</label>
-                  <input
-                    type="text"
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={createLoading}
-                    className="flex-1 px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {createLoading ? 'Erstelle...' : 'Erstellen'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setError(null);
-                    }}
-                    disabled={createLoading}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition disabled:opacity-50"
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}{' '}
       </div>
     </Layout>
   );
