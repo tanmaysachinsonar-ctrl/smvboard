@@ -6,12 +6,22 @@ SMVBoard ist eine umfassende Web-Plattform zur Verwaltung von Schülermitverwalt
 
 ### Kernfunktionen
 - ✅ **Authentifizierung & Multi-Tenancy**: Vollständige Supabase Auth-Integration mit Organisationen
+- ✅ **Kalender mit MonthView**: Toggle zwischen Listen- und Monatsansicht, Event CRUD, Mobile-optimiert
 - ✅ **Finanzverwaltung**: Konten, Transaktionen, Kategorien, Budgets
 - ✅ **Mitgliederverwaltung**: Mitgliederprofile mit Positionen und Kontaktdaten
 - ✅ **Event-Management**: Kalender mit Events und Teilnehmerverwaltung
 - ✅ **Stripe Integration**: Subscription-Verwaltung mit Webhooks
 - ✅ **Audit Logging**: Vollständige Nachverfolgbarkeit aller Aktionen
 - ✅ **Responsive Design**: Tailwind CSS mit Custom Design Tokens
+
+### Neu: Kalender MonthView (Feature A)
+- 📅 **Monatsansicht**: Vollständiger Kalender-Grid mit Events
+- 🔄 **View Toggle**: Wechsel zwischen Listen- und Monatsansicht
+- 📱 **Mobile-First**: Automatische ListView auf Bildschirmen < 768px
+- ✏️ **Event CRUD**: Erstellen, Bearbeiten, Löschen direkt im Kalender
+- 🎨 **Custom Colors**: Event-Farben für bessere Kategorisierung
+- ⌨️ **Keyboard Navigation**: Volle Tastaturunterstützung für Accessibility
+- 🧪 **Test Coverage**: Unit-Tests für alle Komponenten
 
 ### Technologie-Stack
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
