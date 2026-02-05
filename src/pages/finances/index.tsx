@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +22,40 @@ export default function FinancesPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccount, setNewAccount] = useState({ name: '', type: 'CASH', balance: 0 });
+  const [error, setError] = useState<string | null>(null);
+  const [createLoading, setCreateLoading] = useState(false);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      setError(null);
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      if (!token) {
+        setError('Nicht authentifiziert. Bitte melden Sie sich erneut an.');
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch('/api/v1/accounts', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setAccounts(data);
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+      setError('Konten konnten nicht geladen werden. Bitte versuchen Sie es erneut.');
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -33,7 +67,7 @@ export default function FinancesPage() {
     if (user) {
       fetchAccounts();
     }
-  }, [user]);
+  }, [user, fetchAccounts]);
 
   if (authLoading || !user) {
     return (
@@ -43,33 +77,20 @@ export default function FinancesPage() {
     );
   }
 
-  async function fetchAccounts() {
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      const response = await fetch('/api/v1/accounts', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAccounts(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch accounts:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();
+    setCreateLoading(true);
+    setError(null);
+
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
+
+      if (!token) {
+        setError('Nicht authentifiziert. Bitte melden Sie sich erneut an.');
+        router.push('/login');
+        return;
+      }
 
       const response = await fetch('/api/v1/accounts', {
         method: 'POST',
@@ -80,13 +101,19 @@ export default function FinancesPage() {
         body: JSON.stringify(newAccount),
       });
 
-      if (response.ok) {
-        setShowAddModal(false);
-        setNewAccount({ name: '', type: 'CASH', balance: 0 });
-        fetchAccounts();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
+
+      setShowAddModal(false);
+      setNewAccount({ name: '', type: 'CASH', balance: 0 });
+      await fetchAccounts();
     } catch (error) {
       console.error('Failed to create account:', error);
+      setError(error instanceof Error ? error.message : 'Konto konnte nicht erstellt werden.');
+    } finally {
+      setCreateLoading(false);
     }
   }
 
@@ -113,6 +140,19 @@ export default function FinancesPage() {
           </button>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
+            <span className="text-red-500 text-xl">⚠️</span>
+            <div className="flex-1">
+              <p className="text-red-400">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Total Balance Card */}
         <div className="bg-gradient-to-r from-accent to-purple-600 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-white/80">Gesamtguthaben</h2>
@@ -122,22 +162,38 @@ export default function FinancesPage() {
         {/* Accounts Grid */}
         {loading ? (
           <div className="text-center py-12">Lädt...</div>
+        ) : accounts.length === 0 ? (
+          <div className="bg-card rounded-lg p-12 text-center">
+            <div className="text-6xl mb-4">💰</div>
+            <h3 className="text-xl font-semibold mb-2">Keine Konten vorhanden</h3>
+            <p className="text-gray-400 mb-4">
+              Erstellen Sie Ihr erstes Konto, um Transaktionen zu verwalten.
+            </p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-6 py-3 bg-accent hover:bg-accentHover rounded-md transition"
+            >
+              Erstes Konto erstellen
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {accounts.map((account) => (
-              <Link key={account.id} href={`/finances/accounts/${account.id}`}>
-                <a className="block bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold">{account.name}</h3>
-                      <p className="text-sm text-gray-400">{account.type}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-accent/20 text-accent rounded text-xs">
-                      {account._count.transactions} Transaktionen
-                    </span>
+              <Link
+                key={account.id}
+                href={`/finances/accounts/${account.id}`}
+                className="block bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-semibold">{account.name}</h3>
+                    <p className="text-sm text-gray-400">{account.type}</p>
                   </div>
-                  <p className="text-2xl font-bold mt-4">€ {account.balance.toFixed(2)}</p>
-                </a>
+                  <span className="px-2 py-1 bg-accent/20 text-accent rounded text-xs">
+                    {account._count.transactions} Transaktionen
+                  </span>
+                </div>
+                <p className="text-2xl font-bold mt-4">€ {account.balance.toFixed(2)}</p>
               </Link>
             ))}
           </div>
@@ -178,21 +234,28 @@ export default function FinancesPage() {
                     type="number"
                     step="0.01"
                     value={newAccount.balance}
-                    onChange={(e) => setNewAccount({ ...newAccount, balance: parseFloat(e.target.value) })}
+                    onChange={(e) =>
+                      setNewAccount({ ...newAccount, balance: parseFloat(e.target.value) })
+                    }
                     className="w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md"
                   />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition"
+                    disabled={createLoading}
+                    className="flex-1 px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Erstellen
+                    {createLoading ? 'Erstelle...' : 'Erstellen'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setError(null);
+                    }}
+                    disabled={createLoading}
+                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition disabled:opacity-50"
                   >
                     Abbrechen
                   </button>

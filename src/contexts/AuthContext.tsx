@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check active sessions
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchUser(session.user.email!);
+        fetchUser();
       } else {
         setLoading(false);
       }
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        fetchUser(session.user.email!);
+        fetchUser();
       } else {
         setUser(null);
         setLoading(false);
@@ -50,37 +50,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchUser(email: string) {
+  async function fetchUser() {
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
-      
+
       if (!token) {
-        console.error('No auth token available');
         setLoading(false);
         return;
       }
 
-      console.log('Fetching user with email:', email);
       const response = await fetch('/api/v1/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log('API Response status:', response.status);
-
       if (response.ok) {
         const userData = await response.json();
-        console.log('User data received:', userData);
         setUser(userData);
       } else {
         const errorText = await response.text();
         console.error('Failed to fetch user from API:', response.status, errorText);
-        
-        // If 404, user might not exist in DB - try again after onAuthStateChange creates it
+
+        // If 404, user might not exist in DB yet
         if (response.status === 404) {
-          console.log('User not found in DB, will retry via onAuthStateChange');
+          console.warn('User not found in database');
         }
       }
     } catch (error) {
@@ -93,10 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signIn(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
+
     // Immediately fetch user from database
     if (data.user?.email) {
-      await fetchUser(data.user.email);
+      await fetchUser();
     }
   }
 

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import React from 'react';
+import { supabase } from '../../lib/supabaseClient';
 
 // Mock the auth module
 jest.mock('../../lib/auth', () => ({
@@ -8,6 +9,18 @@ jest.mock('../../lib/auth', () => ({
   signIn: jest.fn(),
   signUp: jest.fn(),
   signOut: jest.fn(),
+}));
+
+// Mock Supabase client
+jest.mock('../../lib/supabaseClient', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn(),
+      onAuthStateChange: jest.fn(() => ({
+        data: { subscription: { unsubscribe: jest.fn() } },
+      })),
+    },
+  },
 }));
 
 jest.mock('next/router', () => ({
@@ -42,7 +55,11 @@ describe('AuthContext', () => {
   });
 
   it('should provide null user initially when not authenticated', async () => {
-    (getSession as jest.Mock).mockResolvedValue(null);
+    // Mock Supabase auth to return no session
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
 
     render(
       <AuthProvider>
@@ -60,18 +77,37 @@ describe('AuthContext', () => {
   });
 
   it('should provide user data when authenticated', async () => {
-    const mockSession = {
-      user: {
-        id: 'user123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'OWNER',
-        orgId: 'org123',
-      },
-      accessToken: 'mock-token',
+    const mockUser = {
+      id: 'user123',
+      email: 'test@example.com',
     };
 
-    (getSession as jest.Mock).mockResolvedValue(mockSession);
+    const mockPrismaUser = {
+      id: 'user123',
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'OWNER',
+      orgId: 'org123',
+    };
+
+    // Mock Supabase auth to return a session with user
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: {
+        session: {
+          user: mockUser,
+          access_token: 'mock-token',
+        },
+      },
+      error: null,
+    });
+
+    // Mock fetch to return user data from /api/v1/me
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockPrismaUser),
+      })
+    ) as jest.Mock;
 
     render(
       <AuthProvider>

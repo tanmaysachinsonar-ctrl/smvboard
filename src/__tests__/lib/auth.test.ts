@@ -6,6 +6,7 @@ const mockSignOut = jest.fn();
 const mockUserFindUnique = jest.fn();
 const mockUserCreate = jest.fn();
 const mockOrganizationCreate = jest.fn();
+const mockAuditLogCreate = jest.fn();
 
 jest.mock('../../lib/supabaseClient', () => ({
   supabase: {
@@ -26,6 +27,9 @@ jest.mock('../../lib/prisma', () => ({
     },
     organization: {
       create: (args: any) => mockOrganizationCreate(args),
+    },
+    auditLog: {
+      create: (args: any) => mockAuditLogCreate(args),
     },
   },
 }));
@@ -125,11 +129,17 @@ describe('auth.ts', () => {
         orgId: 'org123',
       });
 
+      mockAuditLogCreate.mockResolvedValue({
+        id: 'audit123',
+        action: 'USER_SIGNED_UP',
+      });
+
       await signUp('new@example.com', 'password123', 'New User', 'New Org');
 
       expect(mockSignUp).toHaveBeenCalled();
       expect(mockOrganizationCreate).toHaveBeenCalled();
       expect(mockUserCreate).toHaveBeenCalled();
+      expect(mockAuditLogCreate).toHaveBeenCalled();
     });
 
     it('should throw error if email already exists', async () => {
