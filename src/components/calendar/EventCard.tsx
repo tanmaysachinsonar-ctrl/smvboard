@@ -1,5 +1,6 @@
 import React from 'react';
 import { Event } from '../../types/models';
+import { getContrastColor } from '../../lib/color';
 
 interface EventCardProps {
   event: Event;
@@ -14,6 +15,8 @@ interface EventCardProps {
 export default function EventCard({ event, onClick }: EventCardProps) {
   const startDate = new Date(event.startAt);
   const endDate = event.endAt ? new Date(event.endAt) : null;
+  const bgColor = event.color || '#3B82F6';
+  const textColor = getContrastColor(bgColor);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('de-DE', {
@@ -33,19 +36,32 @@ export default function EventCard({ event, onClick }: EventCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-md transition-all"
+      className="w-full text-left p-4 bg-card border border-gray-800 rounded-lg hover:border-accent hover:shadow-md transition-all"
       aria-label={`Event: ${event.title}`}
+      style={{
+        borderLeftWidth: '4px',
+        borderLeftColor: bgColor,
+      }}
     >
       <div className="flex gap-4">
-        {/* Color Indicator */}
-        <div className="w-1 rounded-full" style={{ backgroundColor: event.color || '#3B82F6' }} />
-
         <div className="flex-1 min-w-0">
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">{event.title}</h3>
+          {/* Title with Color Badge */}
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className="inline-block px-2 py-1 rounded text-xs font-medium"
+              style={{
+                backgroundColor: bgColor,
+                color: textColor,
+              }}
+            >
+              {event.allDay ? '⏱️ Ganztägig' : '📅 Event'}
+            </span>
+          </div>
+
+          <h3 className="text-lg font-semibold text-white mb-1 truncate">{event.title}</h3>
 
           {/* Date & Time */}
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -63,13 +79,12 @@ export default function EventCard({ event, onClick }: EventCardProps) {
                   {endDate && ` - ${formatTime(endDate)}`}
                 </>
               )}
-              {event.allDay && ' (Ganztägig)'}
             </span>
           </div>
 
           {/* Location */}
           {event.location && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+            <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -90,7 +105,7 @@ export default function EventCard({ event, onClick }: EventCardProps) {
 
           {/* Description */}
           {event.description && (
-            <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
+            <p className="text-sm text-gray-400 line-clamp-2">{event.description}</p>
           )}
         </div>
       </div>

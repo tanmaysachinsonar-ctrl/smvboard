@@ -29,8 +29,8 @@ const handler = async (req: AuthenticatedRequest, res: NextApiResponse) => {
         changes: validatedData,
       });
 
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = updatedUser;
+      // Return user without passwordHash
+      const { passwordHash: _, ...userWithoutPassword } = updatedUser;
       return res.status(200).json(userWithoutPassword);
     } catch (error: any) {
       console.error('PUT /api/v1/me error:', error);

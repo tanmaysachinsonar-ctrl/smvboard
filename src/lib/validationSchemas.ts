@@ -81,3 +81,21 @@ export const createInvoiceSchema = z.object({
 });
 
 export const updateInvoiceSchema = createInvoiceSchema.partial();
+
+// Rose Order schemas
+export const createRoseOrderSchema = z.object({
+  recipientName: z
+    .string()
+    .min(2, 'Name muss mindestens 2 Zeichen lang sein')
+    .max(100, 'Name darf maximal 100 Zeichen lang sein')
+    .regex(
+      /^[a-zA-ZäöüÄÖÜß\s-]+$/,
+      'Name darf nur Buchstaben, Bindestriche und Leerzeichen enthalten'
+    ),
+  recipientSchool: z.string().min(1, 'Bitte wähle eine Schule aus'),
+  quantity: z
+    .number()
+    .int('Anzahl muss eine ganze Zahl sein')
+    .min(1, 'Mindestens 1 Rose')
+    .max(10, 'Maximal 10 Rosen pro Bestellung'),
+});

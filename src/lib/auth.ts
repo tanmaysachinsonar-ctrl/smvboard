@@ -77,10 +77,25 @@ export async function signUp(email: string, password: string, name: string, orgN
     throw new Error(authError?.message || 'Failed to create user');
   }
 
-  // Create organization
-  const org = await prisma.organization.create({
-    data: { name: orgName },
+  // Normalize organization name (trim whitespace)
+  const normalizedOrgName = orgName.trim();
+
+  // Find or create organization (case-insensitive)
+  let org = await prisma.organization.findFirst({
+    where: {
+      name: {
+        equals: normalizedOrgName,
+        mode: 'insensitive',
+      },
+    },
   });
+
+  if (!org) {
+    // Create new organization if it doesn't exist
+    org = await prisma.organization.create({
+      data: { name: normalizedOrgName },
+    });
+  }
 
   // Create user in our database
   const user = await prisma.user.create({
@@ -100,7 +115,7 @@ export async function signUp(email: string, password: string, name: string, orgN
       orgId: org.id,
       userId: user.id,
       action: 'USER_REGISTERED',
-      meta: { email, orgName },
+      meta: { email, orgName: normalizedOrgName },
     },
   });
 

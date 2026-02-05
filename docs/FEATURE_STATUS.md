@@ -69,6 +69,7 @@
 #### Backend - API Endpoints:
 - ✅ `GET /api/v1/accounts` - Konten abrufen
 - ✅ `POST /api/v1/accounts` - Konto erstellen
+- ✅ `GET /api/v1/accounts/[id]` - **NEU**: Account-Details + Transaktionen
 - ✅ `GET /api/v1/transactions` - Transaktionen abrufen (mit Filter)
 - ✅ `POST /api/v1/transactions` - Transaktion erstellen
 - ✅ Audit-Logging
@@ -83,26 +84,38 @@
   - Name, Typ (CASH/BANK/CREDIT_CARD), Initial-Saldo
   - Formular-Validation
   - API-Integration
+- ✅ **NEU**: Account Detail Page ([finances/accounts/[id].tsx](../src/pages/finances/accounts/[id].tsx))
+  - Balance-Anzeige (große Karte)
+  - Transaktionen-Tabelle mit Datum, Beschreibung, Kategorie, Typ, Betrag
+  - Edit/Delete Buttons für OWNER
+  - "Zurück zu Finanzen" Link
+  - Error-Handling (404, 403)
 - ✅ Error Handling & Loading States
-- ⚠️ **FEHLT**: Transaktionen-Liste anzeigen
-- ⚠️ **FEHLT**: Transaktion erstellen/bearbeiten
+- ⚠️ **FEHLT**: Transaktionen-Modal (erstellen/bearbeiten)
 - ⚠️ **FEHLT**: Finanz-Reports/Charts
 
 ### 5. **Mitglieder** ([members/index.tsx](../src/pages/members/index.tsx))
 #### Backend - API Endpoints:
 - ✅ `GET /api/v1/members` - Mitglieder abrufen
-- ✅ `POST /api/v1/members` - Mitglied erstellen (API existiert)
-- ✅ `PUT /api/v1/members/[id]` - Mitglied bearbeiten (API existiert)
-- ✅ `DELETE /api/v1/members/[id]` - Mitglied löschen (API existiert)
+- ✅ `POST /api/v1/members` - Mitglied erstellen
+- ✅ `PUT /api/v1/members/[id]` - Mitglied bearbeiten
+- ✅ `DELETE /api/v1/members/[id]` - Mitglied löschen
 
 #### Frontend:
 - ✅ Mitglieder-Grid anzeigen
   - Avatar-Placeholder (Initiale)
   - Name, Position
   - E-Mail & Telefon (wenn vorhanden)
-- ✅ "+ Neues Mitglied" Button (NICHT funktional)
-- ⚠️ **FEHLT**: Modal zum Hinzufügen von Mitgliedern
-- ⚠️ **FEHLT**: Mitglied bearbeiten/löschen
+- ✅ **NEU**: MemberModal Component ([components/members/MemberModal.tsx](../src/components/members/MemberModal.tsx))
+  - Mitglied hinzufügen (CREATE)
+  - Mitglied bearbeiten (UPDATE)
+  - Mitglied löschen (DELETE) mit Bestätigung
+  - Formular: Name, Position, E-Mail, Telefon
+  - Error Handling & Loading States
+- ✅ **NEU**: CRUD-Integration in members/index.tsx
+  - Bearbeiten/Löschen-Buttons pro Member-Card
+  - Modal-State-Management
+  - API-Calls
 - ⚠️ **FEHLT**: Einladungs-System (E-Mail versenden)
 
 ### 6. **Stripe Integration** (Backend vorbereitet)
@@ -118,25 +131,47 @@
   - Signature Verification
   - Subscription-Status in DB speichern
 
+### 7. **Authentication Improvements** ([lib/auth.ts](../src/lib/auth.ts))
+- ✅ **NEU**: SignUp - Organisation wiederverwenden
+  - Case-insensitive Suche nach `organization.name`
+  - Automatisches Trimmen von Whitespace
+  - Mehrere User können gleicher Organisation beitreten
+  - Unit Tests für findOrCreate-Logik
+- ✅ signIn, signOut, getSession funktional
+
+### 8. **Color Utility** ([lib/color.ts](../src/lib/color.ts))
+- ✅ **NEU**: `getContrastColor(hex)` Funktion
+  - WCAG 2.0 Relative Luminance Algorithmus
+  - sRGB zu Linear RGB Konvertierung
+  - Rückgabe: '#000000' oder '#FFFFFF' für optimalen Kontrast
+- ✅ **NEU**: Integration in Kalender-Komponenten
+  - MonthView: Dynamische Textfarbe für Event-Buttons
+  - EventCard: Event-Badge mit optimaler Lesbarkeit
+  - Automatische Anpassung an helle/dunkle Event-Farben
+- ✅ Unit Tests für alle Edge Cases (3-digit hex, ohne #, ungültige Werte)
+
 ---
 
 ## 🟡 Teilweise funktionsfähig
 
 ### 1. **Profil-Seite** ([profile.tsx](../src/pages/profile.tsx))
 - ✅ User-Daten anzeigen (Name, E-Mail, Rolle, Org-ID)
-- ❌ "Profil bearbeiten" Button (KEIN Backend)
+- ✅ **NEU**: "Profil bearbeiten" Modus (Inline-Editing)
+- ✅ **NEU**: PUT /api/v1/me - Name und E-Mail aktualisieren
+- ✅ **NEU**: Success/Error Messages
+- ✅ **NEU**: Zod-Validation & Audit-Logging
 - ❌ "Passwort ändern" Button (KEIN Backend)
-- ⚠️ **FEHLT**: API-Endpunkt für User-Update
-- ⚠️ **FEHLT**: Formular zum Bearbeiten
 - ⚠️ **FEHLT**: Avatar-Upload
 
 ### 2. **Einstellungen** ([settings.tsx](../src/pages/settings.tsx))
 - ✅ UI-Layout für Benachrichtigungen, Sprache, Privatsphäre
-- ❌ Checkboxen/Selects (KEINE Speicherfunktion)
-- ❌ "Änderungen speichern" Button (KEIN Backend)
-- ⚠️ **FEHLT**: API-Endpunkt für Settings
-- ⚠️ **FEHLT**: Settings-Model in Datenbank
-- ⚠️ **FEHLT**: Funktionale Formulare
+- ✅ **NEU**: GET /api/v1/settings - Settings laden
+- ✅ **NEU**: PUT /api/v1/settings - Settings speichern
+- ✅ **NEU**: Controlled Inputs (Checkboxen, Selects)
+- ✅ **NEU**: Success/Error Messages mit Auto-Hide
+- ✅ **NEU**: Saving-State mit Spinner
+- ✅ **NEU**: Settings-Model in Datenbank (UserSettings)
+- ✅ Vollständig funktional
 
 ### 3. **Subscription/Premium-Seite** ([subscription.tsx](../src/pages/subscription.tsx))
 - ✅ 3 Preispläne anzeigen (Free, Premium, Enterprise)

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Event } from '../../types/models';
+import { getContrastColor } from '../../lib/color';
 
 interface MonthViewProps {
   events: Event[];
@@ -141,25 +142,30 @@ export default function MonthView({
 
             {/* Events */}
             <div className="space-y-1">
-              {day.events.slice(0, 3).map((event) => (
-                <button
-                  key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick(event);
-                  }}
-                  className="w-full text-left px-2 py-1 rounded text-xs font-medium truncate hover:opacity-80 transition-opacity"
-                  style={{
-                    backgroundColor: event.color || '#3B82F6',
-                    color: '#FFFFFF',
-                  }}
-                  title={event.title}
-                  aria-label={`Event: ${event.title}`}
-                >
-                  {event.allDay ? '⏱️ ' : ''}
-                  {event.title}
-                </button>
-              ))}
+              {day.events.slice(0, 3).map((event) => {
+                const bgColor = event.color || '#3B82F6';
+                const textColor = getContrastColor(bgColor);
+
+                return (
+                  <button
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick(event);
+                    }}
+                    className="w-full text-left px-2 py-1 rounded text-xs font-medium truncate hover:opacity-80 transition-opacity"
+                    style={{
+                      backgroundColor: bgColor,
+                      color: textColor,
+                    }}
+                    title={event.title}
+                    aria-label={`Event: ${event.title}`}
+                  >
+                    {event.allDay ? '⏱️ ' : ''}
+                    {event.title}
+                  </button>
+                );
+              })}
               {day.events.length > 3 && (
                 <div className="text-xs text-gray-400 px-2">+{day.events.length - 3} weitere</div>
               )}
