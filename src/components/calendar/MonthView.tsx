@@ -95,23 +95,23 @@ export default function MonthView({
   }, [currentDate, events]);
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-card rounded-lg shadow overflow-hidden border border-gray-800">
       {/* Wochentag-Header */}
-      <div className="grid grid-cols-7 bg-gray-50 border-b">
+      <div className="grid grid-cols-7 bg-gray-900/50 border-b border-gray-800">
         {weekDays.map((day) => (
-          <div key={day} className="py-3 text-center text-sm font-semibold text-gray-700">
+          <div key={day} className="py-3 text-center text-sm font-semibold text-gray-300">
             {day}
           </div>
         ))}
       </div>
 
       {/* Kalender-Grid */}
-      <div className="grid grid-cols-7 divide-x divide-y">
+      <div className="grid grid-cols-7 divide-x divide-y divide-gray-800">
         {calendarDays.map((day, index) => (
           <div
             key={index}
-            className={`min-h-[120px] p-2 cursor-pointer hover:bg-gray-50 transition-colors ${
-              !day.isCurrentMonth ? 'bg-gray-50/50' : ''
+            className={`min-h-[120px] p-2 cursor-pointer hover:bg-gray-800/50 transition-colors ${
+              !day.isCurrentMonth ? 'bg-gray-900/30' : ''
             }`}
             onClick={() => onDateClick(day.date)}
             role="button"
@@ -130,10 +130,10 @@ export default function MonthView({
             <div
               className={`text-sm font-medium mb-1 ${
                 day.isToday
-                  ? 'bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center'
+                  ? 'bg-accent text-white rounded-full w-7 h-7 flex items-center justify-center'
                   : day.isCurrentMonth
-                    ? 'text-gray-900'
-                    : 'text-gray-400'
+                    ? 'text-white'
+                    : 'text-gray-600'
               }`}
             >
               {day.date.getDate()}
@@ -161,7 +161,7 @@ export default function MonthView({
                 </button>
               ))}
               {day.events.length > 3 && (
-                <div className="text-xs text-gray-500 px-2">+{day.events.length - 3} weitere</div>
+                <div className="text-xs text-gray-400 px-2">+{day.events.length - 3} weitere</div>
               )}
             </div>
           </div>
