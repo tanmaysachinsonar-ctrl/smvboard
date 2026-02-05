@@ -8,6 +8,9 @@ async function main() {
 
   // Clean existing data
   await prisma.auditLog.deleteMany();
+  await prisma.roseOrder.deleteMany();
+  await prisma.roseCampaign.deleteMany();
+  await prisma.school.deleteMany();
   await prisma.eventParticipant.deleteMany();
   await prisma.event.deleteMany();
   await prisma.transaction.deleteMany();
@@ -66,6 +69,197 @@ async function main() {
   });
 
   console.log('Created users:', [owner, member, viewer].map(u => u.email));
+
+  // Create schools
+  const schoolA = await prisma.school.create({
+    data: {
+      orgId: org.id,
+      name: 'Gymnasium Nord',
+      accessCode: 'GYMN_2026',
+      description: 'Gymnasium im nördlichen Stadtgebiet',
+    },
+  });
+
+  const schoolB = await prisma.school.create({
+    data: {
+      orgId: org.id,
+      name: 'Realschule Süd',
+      accessCode: 'REAL_SUED_2026',
+      description: 'Realschule im südlichen Stadtgebiet',
+    },
+  });
+
+  const schoolC = await prisma.school.create({
+    data: {
+      orgId: org.id,
+      name: 'Gesamtschule West',
+      accessCode: 'GES_WEST_2026',
+      description: 'Gesamtschule im westlichen Stadtgebiet',
+    },
+  });
+
+  console.log('Created schools:', [schoolA, schoolB, schoolC].map(s => s.name));
+
+  // Assign users to schools
+  await prisma.user.update({
+    where: { id: owner.id },
+    data: { schoolId: schoolA.id },
+  });
+
+  await prisma.user.update({
+    where: { id: member.id },
+    data: { schoolId: schoolB.id },
+  });
+
+  await prisma.user.update({
+    where: { id: viewer.id },
+    data: { schoolId: schoolC.id },
+  });
+
+  console.log('Assigned users to schools');
+
+  // Create rose campaign
+  const roseCampaign = await prisma.roseCampaign.create({
+    data: {
+      orgId: org.id,
+      name: 'Valentinstag 2026',
+      description: 'Rosen zum Valentinstag - bestell eine Rose für deine Mitschüler!',
+      startDate: new Date('2026-02-01'),
+      endDate: new Date('2026-02-14'),
+      pricePerRose: 1.50,
+      status: 'OPEN',
+    },
+  });
+
+  console.log('Created rose campaign:', roseCampaign.name);
+
+  // Create test rose orders
+  const roseOrders = await prisma.roseOrder.createMany({
+    data: [
+      // School A -> School A (internal)
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolA.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Max Müller',
+        recipientClass: '10a',
+        roseCount: 2,
+        senderNote: 'Viel Erfolg bei der Prüfung!',
+        createdById: owner.id,
+        isAnonymous: false,
+      },
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolA.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Anna Schmidt',
+        recipientClass: '10a',
+        roseCount: 1,
+        createdById: owner.id,
+        isAnonymous: true,
+      },
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolA.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Max Müller',
+        recipientClass: '10a',
+        roseCount: 3,
+        senderNote: 'Alles Gute zum Geburtstag!',
+        createdById: owner.id,
+        isAnonymous: false,
+      },
+      // School A -> School B (external)
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolA.id,
+        recipientSchoolId: schoolB.id,
+        recipientName: 'Lisa Weber',
+        recipientClass: '9b',
+        roseCount: 1,
+        senderNote: 'Danke für die Hilfe!',
+        createdById: owner.id,
+        isAnonymous: false,
+      },
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolA.id,
+        recipientSchoolId: schoolB.id,
+        recipientName: 'Tom Fischer',
+        recipientClass: '11c',
+        roseCount: 2,
+        createdById: owner.id,
+        isAnonymous: true,
+      },
+      // School B -> School B (internal)
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolB.id,
+        recipientSchoolId: schoolB.id,
+        recipientName: 'Lisa Weber',
+        recipientClass: '9b',
+        roseCount: 4,
+        senderNote: 'Frohen Valentinstag!',
+        createdById: member.id,
+        isAnonymous: false,
+      },
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolB.id,
+        recipientSchoolId: schoolB.id,
+        recipientName: 'Tom Fischer',
+        recipientClass: '11c',
+        roseCount: 1,
+        createdById: member.id,
+        isAnonymous: true,
+      },
+      // School B -> School A (external)
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolB.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Max Müller',
+        recipientClass: '10a',
+        roseCount: 1,
+        createdById: member.id,
+        isAnonymous: false,
+      },
+      // School C -> School A (external)
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolC.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Anna Schmidt',
+        recipientClass: '10a',
+        roseCount: 2,
+        senderNote: 'Du bist die Beste!',
+        createdById: viewer.id,
+        isAnonymous: false,
+      },
+      {
+        orgId: org.id,
+        campaignId: roseCampaign.id,
+        senderSchoolId: schoolC.id,
+        recipientSchoolId: schoolA.id,
+        recipientName: 'Max Müller',
+        recipientClass: '10a',
+        roseCount: 1,
+        createdById: viewer.id,
+        isAnonymous: true,
+      },
+    ],
+  });
+
+  console.log('Created rose orders:', roseOrders.count);
 
   // Create members (students in SMV)
   const members = await prisma.member.createMany({

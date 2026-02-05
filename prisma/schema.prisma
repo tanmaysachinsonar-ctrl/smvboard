@@ -21,6 +21,9 @@ model Organization {
   members            Member[]
   categories         Category[]
   auditLogs          AuditLog[]
+  schools            School[]
+  roseCampaigns      RoseCampaign[]
+  roseOrders         RoseOrder[]
 }
 
 model User {
@@ -32,6 +35,8 @@ model User {
   passwordHash  String?
   orgId         String
   org           Organization @relation(fields: [orgId], references: [id])
+  schoolId      String?
+  school        School?     @relation(fields: [schoolId], references: [id])
   createdAt     DateTime    @default(now())
   provider      String?
   providerId    String?
@@ -39,6 +44,7 @@ model User {
   invoices      Invoice[]
   events        Event[]
   settings      UserSettings?
+  roseOrders    RoseOrder[]
 }
 
 enum Role {
@@ -212,10 +218,67 @@ model UserSettings {
 
 model RoseOrder {
   id              String   @id @default(cuid())
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  campaignId      String?
+  campaign        RoseCampaign? @relation(fields: [campaignId], references: [id])
+  senderSchoolId  String
+  senderSchool    School @relation("SenderOrders", fields: [senderSchoolId], references: [id])
+  recipientSchoolId String
+  recipientSchool School @relation("RecipientOrders", fields: [recipientSchoolId], references: [id])
   recipientName   String
-  recipientSchool String
-  quantity        Int
+  recipientClass  String?
+  roseCount       Int @default(1)
+  senderNote      String?
+  createdById     String
+  createdBy       User @relation(fields: [createdById], references: [id])
+  isAnonymous     Boolean @default(false)
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  @@index([recipientSchool])
+  @@index([recipientSchoolId, recipientName])
+  @@index([orgId])
+  @@index([campaignId])
+  @@index([createdById])
+}
+
+model School {
+  id              String @id @default(cuid())
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  name            String
+  accessCode      String @unique
+  description     String?
+  users           User[]
+  sentOrders      RoseOrder[] @relation("SenderOrders")
+  receivedOrders  RoseOrder[] @relation("RecipientOrders")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([orgId])
+}
+
+model RoseCampaign {
+  id          String @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id])
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  pricePerRose Float @default(1.50)
+  status      RoseCampaignStatus @default(OPEN)
+  orders      RoseOrder[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([status])
+}
+
+enum RoseCampaignStatus {
+  PLANNED
+  OPEN
+  CLOSED
+  ARCHIVED
 }

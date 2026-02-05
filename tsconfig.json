@@ -26,7 +26,11 @@
       "jest",
       "@testing-library/jest-dom"
     ],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

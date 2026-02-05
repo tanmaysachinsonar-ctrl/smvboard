@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest, logAudit } from '../../../lib/apiMiddleware';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';

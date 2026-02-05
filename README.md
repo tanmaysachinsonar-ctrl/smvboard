@@ -10,11 +10,22 @@ SMVBoard ist eine umfassende Web-Plattform zur Verwaltung von Schülermitverwalt
 - ✅ **Finanzverwaltung**: Konten, Transaktionen, Kategorien, Budgets
 - ✅ **Mitgliederverwaltung**: Mitgliederprofile mit Positionen und Kontaktdaten
 - ✅ **Event-Management**: Kalender mit Events und Teilnehmerverwaltung
+- ✅ **🌹 Rosenaktion**: Multi-School Rose Ordering System mit intelligenter Logistik (NEU in v1.1.0)
 - ✅ **Stripe Integration**: Subscription-Verwaltung mit Webhooks
 - ✅ **Audit Logging**: Vollständige Nachverfolgbarkeit aller Aktionen
 - ✅ **Responsive Design**: Tailwind CSS mit Custom Design Tokens
 
-### Neu: Kalender MonthView (Feature A)
+### Neu in v1.1.0: Rosenaktion 🌹
+- 🏫 **Multi-School-System**: Schulübergreifende Rosen-Bestellungen
+- 📦 **Intelligente Logistik**: Empfänger-Schule verteilt (keine Transporte zwischen Schulen)
+- 📊 **Verteilungslisten**: Automatisch aggregiert nach Empfänger
+- 📅 **Kampagnen-Management**: Zeitlich begrenzte Aktionen (z.B. Valentinstag)
+- 📤 **CSV-Export**: Verteilungslisten zum Ausdrucken
+- 🎭 **Anonyme Bestellungen**: Optional kann Absender anonym bleiben
+- 🔐 **Access Control**: MEMBER sieht nur eigene Schule, OWNER sieht alle
+- 📱 **Vollständig Responsive**: Mobile-optimiert
+
+### Kalender MonthView (Feature A)
 - 📅 **Monatsansicht**: Vollständiger Kalender-Grid mit Events
 - 🔄 **View Toggle**: Wechsel zwischen Listen- und Monatsansicht
 - 📱 **Mobile-First**: Automatische ListView auf Bildschirmen < 768px

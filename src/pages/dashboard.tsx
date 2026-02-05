@@ -74,6 +74,15 @@ export default function DashboardPage() {
           </Link>
 
           <Link
+            href="/roses"
+            className="bg-card rounded-lg p-6 hover:ring-2 hover:ring-accent transition"
+          >
+            <div className="text-4xl mb-2">🌹</div>
+            <h2 className="text-xl font-semibold">Rosenaktion</h2>
+            <p className="text-gray-400 text-sm mt-1">Rosen bestellen & verteilen</p>
+          </Link>
+
+          <Link
             href="/subscription"
             className="bg-gradient-to-br from-accent to-purple-600 rounded-lg p-6 hover:ring-2 hover:ring-white transition"
           >
