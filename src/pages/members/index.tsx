@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
-import Link from 'next/link';
+import MemberModal, { MemberFormData } from '../../components/members/MemberModal';
 
 interface Member {
   id: string;
@@ -21,6 +21,9 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -74,6 +77,67 @@ export default function MembersPage() {
 
   if (!user) return null;
 
+  const handleCreateMember = () => {
+    setSelectedMember(null);
+    setShowModal(true);
+  };
+
+  const handleEditMember = (member: Member) => {
+    setSelectedMember(member);
+    setShowModal(true);
+  };
+
+  const handleSubmitMember = async (data: MemberFormData) => {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) throw new Error('Nicht authentifiziert');
+
+    if (selectedMember) {
+      const response = await fetch(`/api/v1/members/${selectedMember.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(errorData.error || 'Mitglied konnte nicht aktualisiert werden');
+      }
+    } else {
+      const response = await fetch('/api/v1/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(errorData.error || 'Mitglied konnte nicht erstellt werden');
+      }
+    }
+    await fetchMembers();
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    if (!confirm('Möchten Sie dieses Mitglied wirklich löschen?')) return;
+    setDeleteLoading(memberId);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error('Nicht authentifiziert');
+      const response = await fetch(`/api/v1/members/${memberId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Mitglied konnte nicht gelöscht werden');
+      await fetchMembers();
+    } catch (error) {
+      console.error('Failed to delete member:', error);
+      setError(error instanceof Error ? error.message : 'Fehler beim Löschen');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   return (
     <Layout>
       <Head>
@@ -83,12 +147,12 @@ export default function MembersPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Mitglieder</h1>
-          <Link
-            href="/members/new"
+          <button
+            onClick={handleCreateMember}
             className="px-4 py-2 bg-accent hover:bg-accentHover rounded-md transition"
           >
             + Neues Mitglied
-          </Link>
+          </button>
         </div>
 
         {/* Error Alert */}
@@ -111,12 +175,12 @@ export default function MembersPage() {
             <div className="text-6xl mb-4">👥</div>
             <h3 className="text-xl font-semibold mb-2">Keine Mitglieder vorhanden</h3>
             <p className="text-gray-400 mb-4">Fügen Sie Ihr erstes SMV-Mitglied hinzu.</p>
-            <Link
-              href="/members/new"
+            <button
+              onClick={handleCreateMember}
               className="inline-block px-6 py-3 bg-accent hover:bg-accentHover rounded-md transition"
             >
               Erstes Mitglied hinzufügen
-            </Link>
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -137,11 +201,33 @@ export default function MembersPage() {
                     {member.phone && <p className="text-gray-400">📞 {member.phone}</p>}
                   </div>
                 )}
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => handleEditMember(member)}
+                    className="flex-1 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition"
+                  >
+                    Bearbeiten
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMember(member.id)}
+                    disabled={deleteLoading === member.id}
+                    className="px-3 py-1.5 text-sm bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded transition disabled:opacity-50"
+                  >
+                    {deleteLoading === member.id ? '...' : 'Löschen'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      <MemberModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmitMember}
+        member={selectedMember}
+        mode={selectedMember ? 'edit' : 'create'}
+      />
     </Layout>
   );
 }

@@ -38,6 +38,7 @@ model User {
   transactions  Transaction[]
   invoices      Invoice[]
   events        Event[]
+  settings      UserSettings?
 }
 
 enum Role {
@@ -192,4 +193,19 @@ model AuditLog {
   action    String
   meta      Json?
   createdAt DateTime @default(now())
+}
+
+model UserSettings {
+  id                    String @id @default(cuid())
+  userId                String @unique
+  user                  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailNotifications    Boolean @default(true)
+  eventReminders        Boolean @default(true)
+  financeUpdates        Boolean @default(false)
+  language              String @default("de")
+  timezone              String @default("Europe/Berlin")
+  profileVisibility     Boolean @default(true)
+  twoFactorEnabled      Boolean @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
