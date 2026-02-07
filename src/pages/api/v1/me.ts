@@ -10,7 +10,38 @@ const updateUserSchema = z.object({
 
 const handler = async (req: AuthenticatedRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    return res.status(200).json(req.user);
+    try {
+      // Fetch full user info including school and org
+      const fullUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          org: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              accessCode: true,
+            },
+          },
+        },
+      });
+
+      if (!fullUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Return user without passwordHash
+      const { passwordHash: _, ...userWithoutPassword } = fullUser;
+      return res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      console.error('GET /api/v1/me error:', error);
+      return res.status(500).json({ error: 'Failed to fetch user info' });
+    }
   }
 
   if (req.method === 'PUT') {

@@ -19,11 +19,30 @@ interface UserSettings {
   updatedAt: string;
 }
 
+interface UserInfo {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  schoolId: string | null;
+  school?: {
+    id: string;
+    name: string;
+    accessCode: string;
+  } | null;
+  org: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+}
+
 export default function SettingsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [error, setError] = useState('');
