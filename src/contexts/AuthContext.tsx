@@ -19,7 +19,7 @@ interface AuthContextType {
     password: string,
     name: string,
     orgName: string,
-    schoolCode?: string
+    schoolName: string
   ) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -106,12 +106,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     name: string,
     orgName: string,
-    schoolCode?: string
+    schoolName: string
   ) {
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, orgName, schoolCode }),
+      body: JSON.stringify({ email, password, name, orgName, schoolName }),
     });
 
     if (!response.ok) {

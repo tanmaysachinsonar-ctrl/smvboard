@@ -11,12 +11,7 @@ export const signUpSchema = z.object({
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen lang sein'),
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen lang sein'),
   orgName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen lang sein'),
-  schoolCode: z
-    .string()
-    .min(6, 'Schulcode muss mindestens 6 Zeichen lang sein')
-    .max(20, 'Schulcode darf maximal 20 Zeichen lang sein')
-    .regex(/^[A-Z0-9_-]+$/, 'Schulcode darf nur Großbuchstaben, Zahlen, _ und - enthalten')
-    .optional(),
+  schoolName: z.string().min(2, 'Schulname muss mindestens 2 Zeichen lang sein'),
 });
 
 // Transaction schemas

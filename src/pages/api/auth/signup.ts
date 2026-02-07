@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       validatedData.password,
       validatedData.name,
       validatedData.orgName,
-      validatedData.schoolCode
+      validatedData.schoolName
     );
 
     return res.status(201).json(result);

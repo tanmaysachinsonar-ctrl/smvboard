@@ -1,6 +1,10 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import Head from 'next/head';
-import { SCHOOLS } from '../../lib/schools';
+
+interface School {
+  id: string;
+  name: string;
+}
 
 export default function RoseOrderPage() {
   const [formData, setFormData] = useState({
@@ -8,9 +12,32 @@ export default function RoseOrderPage() {
     recipientSchool: '',
     quantity: 1,
   });
+  const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSchools, setLoadingSchools] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Load schools on mount
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const response = await fetch('/api/public/schools');
+        if (response.ok) {
+          const data = await response.json();
+          setSchools(data.schools || []);
+        } else {
+          setError('Fehler beim Laden der Schulen');
+        }
+      } catch (err) {
+        console.error('Failed to load schools:', err);
+        setError('Fehler beim Laden der Schulen');
+      } finally {
+        setLoadingSchools(false);
+      }
+    };
+    fetchSchools();
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -108,18 +135,23 @@ export default function RoseOrderPage() {
               <select
                 id="recipientSchool"
                 required
-                disabled={loading}
+                disabled={loading || loadingSchools}
                 value={formData.recipientSchool}
                 onChange={(e) => setFormData({ ...formData, recipientSchool: e.target.value })}
                 className="w-full px-4 py-3 bg-smvbg border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
               >
-                <option value="">Bitte wählen...</option>
-                {SCHOOLS.map((school) => (
-                  <option key={school} value={school}>
-                    {school}
+                <option value="">{loadingSchools ? 'Lade Schulen...' : 'Bitte wählen...'}</option>
+                {schools.map((school) => (
+                  <option key={school.id} value={school.name}>
+                    {school.name}
                   </option>
                 ))}
               </select>
+              {schools.length === 0 && !loadingSchools && (
+                <p className="mt-2 text-sm text-yellow-500">
+                  Keine Schulen verfügbar. Bitte kontaktiere einen Administrator.
+                </p>
+              )}
             </div>
 
             {/* Anzahl */}

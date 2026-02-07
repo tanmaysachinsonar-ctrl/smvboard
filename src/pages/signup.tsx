@@ -1,26 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
+
+interface School {
+  id: string;
+  name: string;
+  orgId: string;
+}
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [orgName, setOrgName] = useState('');
-  const [schoolCode, setSchoolCode] = useState('');
+  const [schools, setSchools] = useState<School[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+  const [newSchoolName, setNewSchoolName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingSchools, setLoadingSchools] = useState(true);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const { signUp } = useAuth();
+
+  // Load schools on mount
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const response = await fetch('/api/public/schools');
+        if (response.ok) {
+          const data = await response.json();
+          setSchools(data.schools || []);
+        }
+      } catch (err) {
+        console.error('Failed to load schools:', err);
+      } finally {
+        setLoadingSchools(false);
+      }
+    };
+    fetchSchools();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validate school selection
+    if (selectedSchoolId === '' && !newSchoolName.trim()) {
+      setError('Bitte wähle eine Schule aus oder gib eine neue an');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signUp(email, password, name, orgName, schoolCode || undefined);
+      // Determine school name to use
+      const schoolName =
+        selectedSchoolId === 'new'
+          ? newSchoolName.trim()
+          : schools.find((s) => s.id === selectedSchoolId)?.name || newSchoolName.trim();
+
+      if (!schoolName) {
+        throw new Error('Schulname ist erforderlich');
+      }
+
+      await signUp(email, password, name, orgName, schoolName);
       // Show email confirmation message instead of redirecting
       setShowEmailConfirmation(true);
     } catch (err: any) {
@@ -164,23 +208,51 @@ export default function SignUpPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="schoolCode" className="block text-sm font-medium text-gray-300">
-                    Schulcode <span className="text-gray-500">(optional)</span>
+                  <label htmlFor="school" className="block text-sm font-medium text-gray-300">
+                    Deine Schule *
                   </label>
-                  <input
-                    id="schoolCode"
-                    name="schoolCode"
-                    type="text"
-                    value={schoolCode}
-                    onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
-                    className="mt-1 block w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                    placeholder="SCHULE-2024"
-                    maxLength={20}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Falls deine Schule bereits einen Code hat, gib ihn hier ein
-                  </p>
+                  <select
+                    id="school"
+                    name="school"
+                    required
+                    value={selectedSchoolId}
+                    onChange={(e) => setSelectedSchoolId(e.target.value)}
+                    disabled={loadingSchools || loading}
+                    className="mt-1 block w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+                  >
+                    <option value="" disabled>
+                      {loadingSchools ? 'Lade Schulen...' : 'Wähle deine Schule'}
+                    </option>
+                    {schools.map((school) => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}
+                      </option>
+                    ))}
+                    <option value="new">➕ Neue Schule hinzufügen</option>
+                  </select>
                 </div>
+
+                {selectedSchoolId === 'new' && (
+                  <div>
+                    <label
+                      htmlFor="newSchoolName"
+                      className="block text-sm font-medium text-gray-300"
+                    >
+                      Name der neuen Schule *
+                    </label>
+                    <input
+                      id="newSchoolName"
+                      name="newSchoolName"
+                      type="text"
+                      required
+                      value={newSchoolName}
+                      onChange={(e) => setNewSchoolName(e.target.value)}
+                      disabled={loading}
+                      className="mt-1 block w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+                      placeholder="Meine Schule"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-300">

@@ -64,6 +64,18 @@ export async function signIn(email: string, password: string) {
 }
 
 /**
+ * Generate a unique school access code
+ */
+function generateAccessCode(schoolName: string): string {
+  const prefix = schoolName
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .substring(0, 6);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${random}`;
+}
+
+/**
  * Sign up with email and password
  */
 export async function signUp(
@@ -71,8 +83,13 @@ export async function signUp(
   password: string,
   name: string,
   orgName: string,
-  schoolCode?: string
+  schoolName: string
 ) {
+  // Validate required fields
+  if (!schoolName || !schoolName.trim()) {
+    throw new Error('Schulname ist erforderlich');
+  }
+
   // Create Supabase auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -83,8 +100,9 @@ export async function signUp(
     throw new Error(authError?.message || 'Failed to create user');
   }
 
-  // Normalize organization name (trim whitespace)
+  // Normalize names
   const normalizedOrgName = orgName.trim();
+  const normalizedSchoolName = schoolName.trim();
 
   // Find or create organization (case-insensitive)
   let org = await prisma.organization.findFirst({
@@ -103,36 +121,43 @@ export async function signUp(
     });
   }
 
-  // Find school by access code if provided
-  let schoolId: string | undefined;
-  if (schoolCode) {
-    const normalizedCode = schoolCode.trim().toUpperCase();
-    const school = await prisma.school.findUnique({
-      where: {
-        accessCode: normalizedCode,
+  // Find or create school within the organization
+  let school = await prisma.school.findFirst({
+    where: {
+      orgId: org.id,
+      name: {
+        equals: normalizedSchoolName,
+        mode: 'insensitive',
       },
-      select: {
-        id: true,
-        orgId: true,
-        name: true,
-      },
+    },
+  });
+
+  if (!school) {
+    // Create new school with generated access code
+    let accessCode = generateAccessCode(normalizedSchoolName);
+
+    // Ensure access code is unique
+    let codeExists = await prisma.school.findUnique({
+      where: { accessCode },
     });
 
-    if (!school) {
-      throw new Error('Ungültiger Schulcode. Bitte überprüfe den Code und versuche es erneut.');
+    while (codeExists) {
+      accessCode = generateAccessCode(normalizedSchoolName);
+      codeExists = await prisma.school.findUnique({
+        where: { accessCode },
+      });
     }
 
-    // Verify school belongs to the same organization
-    if (school.orgId !== org.id) {
-      throw new Error(
-        'Der Schulcode gehört zu einer anderen Organisation. Bitte verwende den korrekten Organisationsnamen.'
-      );
-    }
-
-    schoolId = school.id;
+    school = await prisma.school.create({
+      data: {
+        name: normalizedSchoolName,
+        accessCode,
+        orgId: org.id,
+      },
+    });
   }
 
-  // Create user in our database
+  // Create user in our database with school assignment
   const user = await prisma.user.create({
     data: {
       id: authData.user.id,
@@ -140,7 +165,7 @@ export async function signUp(
       name,
       role: 'OWNER',
       orgId: org.id,
-      schoolId,
+      schoolId: school.id,
       provider: 'email',
     },
   });
@@ -151,11 +176,11 @@ export async function signUp(
       orgId: org.id,
       userId: user.id,
       action: 'USER_REGISTERED',
-      meta: { email, orgName: normalizedOrgName, schoolCode: schoolCode || null },
+      meta: { email, orgName: normalizedOrgName, schoolName: normalizedSchoolName },
     },
   });
 
-  return { user, org };
+  return { user, org, school };
 }
 
 /**
