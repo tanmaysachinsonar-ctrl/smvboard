@@ -66,7 +66,13 @@ export async function signIn(email: string, password: string) {
 /**
  * Sign up with email and password
  */
-export async function signUp(email: string, password: string, name: string, orgName: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  orgName: string,
+  schoolCode?: string
+) {
   // Create Supabase auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -97,6 +103,35 @@ export async function signUp(email: string, password: string, name: string, orgN
     });
   }
 
+  // Find school by access code if provided
+  let schoolId: string | undefined;
+  if (schoolCode) {
+    const normalizedCode = schoolCode.trim().toUpperCase();
+    const school = await prisma.school.findUnique({
+      where: {
+        accessCode: normalizedCode,
+      },
+      select: {
+        id: true,
+        orgId: true,
+        name: true,
+      },
+    });
+
+    if (!school) {
+      throw new Error('Ungültiger Schulcode. Bitte überprüfe den Code und versuche es erneut.');
+    }
+
+    // Verify school belongs to the same organization
+    if (school.orgId !== org.id) {
+      throw new Error(
+        'Der Schulcode gehört zu einer anderen Organisation. Bitte verwende den korrekten Organisationsnamen.'
+      );
+    }
+
+    schoolId = school.id;
+  }
+
   // Create user in our database
   const user = await prisma.user.create({
     data: {
@@ -105,6 +140,7 @@ export async function signUp(email: string, password: string, name: string, orgN
       name,
       role: 'OWNER',
       orgId: org.id,
+      schoolId,
       provider: 'email',
     },
   });
@@ -115,7 +151,7 @@ export async function signUp(email: string, password: string, name: string, orgN
       orgId: org.id,
       userId: user.id,
       action: 'USER_REGISTERED',
-      meta: { email, orgName: normalizedOrgName },
+      meta: { email, orgName: normalizedOrgName, schoolCode: schoolCode || null },
     },
   });
 

@@ -8,6 +8,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [schoolCode, setSchoolCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
@@ -19,7 +20,7 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password, name, orgName);
+      await signUp(email, password, name, orgName, schoolCode || undefined);
       // Show email confirmation message instead of redirecting
       setShowEmailConfirmation(true);
     } catch (err: any) {
@@ -160,6 +161,25 @@ export default function SignUpPage() {
                     className="mt-1 block w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
                     placeholder="Beispiel-Gymnasium"
                   />
+                </div>
+
+                <div>
+                  <label htmlFor="schoolCode" className="block text-sm font-medium text-gray-300">
+                    Schulcode <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    id="schoolCode"
+                    name="schoolCode"
+                    type="text"
+                    value={schoolCode}
+                    onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
+                    className="mt-1 block w-full px-3 py-2 bg-smvbg border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    placeholder="SCHULE-2024"
+                    maxLength={20}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Falls deine Schule bereits einen Code hat, gib ihn hier ein
+                  </p>
                 </div>
 
                 <div>
